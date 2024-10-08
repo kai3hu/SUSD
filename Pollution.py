@@ -2,9 +2,6 @@ import numpy as np
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 
-
-NPFltArr = NDArray[np.float64]
-
 class pollution:
     """
     A class to represent the polluted source using a Gaussian plume model.
@@ -79,28 +76,25 @@ class pollution:
         self.Q = Q
         self.hs = 30.0
         self.u = np.random.uniform(1, 10.0)  # Random wind speed between 1 and 10 m/s
-        self.v = np.random.uniform(-np.pi/4, np.pi/4)  # Random wind direction in radians
+        self.v = np.pi/6  # Random wind direction in radians
 
     ## Methods ================================================================#
-    def __call__(self, x: NPFltArr, y: NPFltArr, z: NPFltArr) -> NPFltArr:
+    def __call__(self, x: float, y: float, z: float) -> float:
         """
         Calculate the concentration at given (x, y, z) coordinates.
 
         Parameters
         ----------
-        x : NPFltArr
-            Array of x-coordinates
-        y : NPFltArr
-            Array of y-coordinates
-        z : NPFltArr
-            Array of z-coordinates
+        x : float
+            x-coordinate of the point
+        y : float
+            y-coordinate of the point
+        z : float
+            z-coordinate of the point
 
         Returns
         -------
-        NPFltArr
-            Array of concentration values
         """
-        
         # Rotate coordinates based on wind direction
         x_rot = x * np.cos(self.v) + y * np.sin(self.v)
         y_rot = -x * np.sin(self.v) + y * np.cos(self.v)
@@ -125,7 +119,7 @@ class pollution:
         
         return concentration
 
-    def display2D(self, size=500, resolution=100):
+    def display2D(self, size=1000, resolution=100):
         """
         2D representation of pollution concentration with continuous color gradient at z = 0.
     
@@ -146,17 +140,15 @@ class pollution:
         C_normalized = (C - np.min(C)) / (np.max(C) - np.min(C))
     
         # Create a figure
-        fig, ax = plt.subplots(figsize=(14, 12))
+        fig, ax = plt.subplots(figsize=(8, 6))
     
         # Set up the colormap
         scalarMap = plt.cm.ScalarMappable(cmap='viridis_r')
         scalarMap.set_array(C)
     
         # Create a contour plot
-        contour = ax.contourf(X, Y, C, levels=50, cmap='viridis_r')
+        contour = ax.contourf(X, Y, C, levels=10, cmap='viridis_r')
     
-        # Highlight the pollution source
-        ax.scatter(self.x, self.y, color='red', s=100, marker='*', label='Pollution Source')
     
         ax.set_title(f'2D Pollution Concentration at Z = 30m\nWind Speed: {self.u:.2f} m/s, Direction: {np.degrees(self.v):.2f}°', fontsize=16)
         ax.set_xlabel('X coordinate (m)', fontsize=12)
@@ -227,22 +219,22 @@ class pollution:
         # Add legend
         ax.legend()
 
-    def calculate_concentration_gradient(self, eta: NPFltArr[float]) -> NPFltArr[float]:
+    def calculate_concentration_gradient(self, position):
         """
         Calculate the concentration gradient at a given point in 2D.
 
         Parameters
         ----------
-        eta : NPFltArr
-            Array of [x, y] coordinates
-
+        x : float
+            x-coordinate of the point
+        y : float
+            y-coordinate of the point
         Returns
         -------
         NPFltArr
             Array of concentration gradient values [dx, dy] pointing towards highest concentration (pollution source)
         """
-        x, y = eta
-
+        x, y = position
         # Rotate coordinates based on wind direction
         x_rot = x * np.cos(self.v) + y * np.sin(self.v)
         y_rot = -x * np.sin(self.v) + y * np.cos(self.v)
