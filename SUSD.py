@@ -6,7 +6,7 @@ from matplotlib.animation import FuncAnimation
 
 pollution = pl.pollution(0, 0, 1.59, 30)
 r = rb.robot(800, 800)
-group=r.build_group(2)
+group=r.build_group(3)
 
 size = 1000
 resolution = 100
@@ -38,16 +38,15 @@ def update(frame):
         auv.speed = new_velocities[i]
         new_position = auv.position + auv.speed * 0.1
         auv.position = new_position
-        route_history[i].append(list(auv.position))
 
     ax.clear()
     
     # Re-create the contour plot
-    contour = ax.contour(X, Y, C, levels=30, colors='black', alpha=0.5)
+    contour = ax.contour(X, Y, C, levels=50, colors='black', alpha=0.5)
     
-    for i, history in enumerate(route_history):
-        history_array = np.array(history)
-        ax.plot(history_array[:, 0], history_array[:, 1], label=f'Vehicle {i+1}')
+    # Plot current positions of vehicles
+    for i, auv in enumerate(group):
+        ax.plot(auv.position[0], auv.position[1], 'o', label=f'Vehicle {i+1}')
     
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
@@ -57,7 +56,7 @@ def update(frame):
     return ax
 
 # Create the animation
-anim = FuncAnimation(fig, update, frames=500, interval=20, blit=False)
+anim = FuncAnimation(fig, update, frames=500, interval=50, blit=False)
 
 # Save the animation as a GIF
 anim.save('pollution_simulation.gif', writer='pillow', fps=30)
