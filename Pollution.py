@@ -272,4 +272,45 @@ class pollution:
         
         print(f"Gradient at point ({x}, {y}): {gradient}")
         return gradient
+    def calculate_concentration(self, position):
+        """
+        Calculate the normalized concentration at a given point in 2D.
 
+        Parameters
+        ----------
+        position : tuple
+            (x, y) coordinates of the point
+        Returns
+        -------
+        float
+            Normalized concentration value at the given point (0-1 range)
+        """
+        x, y = position
+        z = 0  # Set z-coordinate to 0 for 2D calculation
+
+        # Rotate coordinates based on wind direction
+        x_rot = x * np.cos(self.v) + y * np.sin(self.v)
+        y_rot = -x * np.sin(self.v) + y * np.cos(self.v)
+
+        # Calculate effective release height
+        delta_h = 2.126e-4 * np.abs(x_rot)**(2/3)
+        He = self.hs + delta_h
+
+        # Calculate dispersion coefficients
+        sigma_y = 1.36 * np.abs(x_rot)**0.82
+        sigma_z = 0.275 * np.abs(x_rot)**0.69
+
+        # Calculate concentration
+        coeff = self.Q / (2 * np.pi * self.u * sigma_y * sigma_z)
+        exp_y = np.exp(-y_rot**2 / (2 * sigma_y**2))
+        exp_z = np.exp(-(z - He)**2 / (2 * sigma_z**2)) + np.exp(-(z + He)**2 / (2 * sigma_z**2))
+
+        # Set concentration to 0 for opposite direction of wind
+        concentration = np.where(x_rot >= 0, coeff * exp_y * exp_z, 0)
+        
+        # Normalize concentration to 0-1 range
+        max_concentration = self.Q / (2 * np.pi * self.u * sigma_y * sigma_z)
+        normalized_concentration = concentration / max_concentration
+        
+        print(f"Normalized concentration at point ({x}, {y}): {normalized_concentration}")
+        return concentration
