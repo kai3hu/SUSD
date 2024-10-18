@@ -5,7 +5,7 @@ import Pollution as pl
 from matplotlib.animation import FuncAnimation
 
 pollution = pl.pollution(60, 60, 1.59, 30)
-r = rb.robot(800, 800)
+r = rb.robot(600, 800)
 group = r.group = r.build_group(2)
 
 size = 1000
