@@ -233,7 +233,7 @@ class pollution:
         NPFltArr
             Array of concentration gradient values [dx, dy] pointing towards highest concentration (pollution source)
         """
-        x, y = position
+        
         # Rotate coordinates based on wind direction
         x_rot = x * np.cos(self.v) + y * np.sin(self.v)
         y_rot = -x * np.sin(self.v) + y * np.cos(self.v)
