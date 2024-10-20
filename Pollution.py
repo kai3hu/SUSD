@@ -75,7 +75,7 @@ class pollution:
         self.z = hs
         self.Q = Q
         self.hs = 30.0
-        self.u = np.random.uniform(1, 10.0)  # Random wind speed between 1 and 10 m/s
+        self.u = 3.6  # Random wind speed between 1 and 10 m/s
         self.v = np.pi/6  # Random wind direction in radians
 
     ## Methods ================================================================#
@@ -219,7 +219,6 @@ class pollution:
         # Add legend
         ax.legend()
 
-    def calculate_concentration_gradient(self, position):
         """
         Calculate the concentration gradient at a given point in 2D.
 
@@ -311,6 +310,4 @@ class pollution:
         # Normalize concentration to 0-1 range
         max_concentration = self.Q / (2 * np.pi * self.u * sigma_y * sigma_z)
         normalized_concentration = concentration / max_concentration
-        
-        print(f"Normalized concentration at point ({x}, {y}): {normalized_concentration}")
         return concentration
