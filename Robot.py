@@ -99,7 +99,7 @@ class robot:
             print(f"Agent {agent.id}: Neighbors {neighbor_indices}")
         print()  # Add a blank line for readability
         
-        # Plot the graph of vehicle relationships
+        #Plot the graph of vehicle relationships
         # self.plot_vehicle_graph(gp.group)     
         return gp
     
@@ -143,15 +143,15 @@ class robot:
         a0 = 20.0  # Desired inter-agent distance
 
         r_i = self.position[0:2]  # Current vehicle position
-        q = vehicles.current_baseline
-
         v_para = np.zeros(2)  # Initialize parallel velocity component
 
         for neighbor in self.neighbors:
             r_j = neighbor.position[0:2]  # Neighbor position
-            r_ij_dot_q = np.dot(r_j - r_i, q)
-            a0_ij = a0 if r_ij_dot_q > 0 else -a0  # Asymmetric desired distance based on dot product
-            v_para += kp * ((r_ij_dot_q - a0_ij) * q)
+            r_ij = r_j - r_i  # Vector from current vehicle to neighbor
+            r_ij_norm = np.linalg.norm(r_ij)
+            if r_ij_norm > 0:
+                r_ij_unit = r_ij / r_ij_norm
+                v_para += kp * (r_ij_norm - a0) * r_ij_unit
 
         return v_para
     #######################################################################
@@ -170,16 +170,16 @@ class robot:
         numpy.ndarray
             2D perpendicular velocity vector along the SUSD direction
         """
-        q = vehicles.current_baseline
-        k = 20.0  # Attraction constant
-        C = 5  # Constant offset
+        
+        k = 5000  # Attraction constant
+        C = 15  # Constant offset
 
         y_r_i = pollution.calculate_concentration(self.position)  # Concentration measurement for current vehicle
         print(f"Robot: {self.id} Concentration measurement for current vehicle: {y_r_i}")
         
 
         # Calculate the unit vecotr n (n is perpendicular to q)
-        n = np.array([-q[1], q[0]])
+        n = self.calculate_perpendicular_vector(pollution)
         n_unit = n / np.linalg.norm(n)
 
         # Calculate the perpendicular velocity magnitude
@@ -187,12 +187,36 @@ class robot:
         y_max = 1.1e-5
         y_normalized = (y_r_i - y_min) / (y_max - y_min)
         y_normalized = y_normalized ** 3  # Squaring to increase the effect at higher concentrations
-        v_perp_mag = k * (1 - y_normalized) / (y_normalized + 0.1) + C
+        v_perp_mag = k * y_r_i + C
         
         # Calculate the projection of v_perp onto n
         v_perp_n = np.multiply(v_perp_mag, n_unit)
 
         return v_perp_n
+    
+    def calculate_perpendicular_vector(self, pollution):
+        n_sum = np.zeros(2)
+        for neighbor in self.neighbors:
+            # Calculate direction vector from self to neighbor
+            n = np.array(neighbor.position[:2]) - np.array(self.position[:2])
+            n = n / np.linalg.norm(n)  # Normalize
+            
+            # Get concentrations
+            my_conc = pollution.calculate_concentration(self.position)
+            neighbor_conc = pollution.calculate_concentration(neighbor.position)
+            
+            # Point n towards higher concentration
+            if my_conc > neighbor_conc:
+                n = -n
+                
+            n_sum += n
+            
+            
+        # Normalize final direction
+        if np.linalg.norm(n_sum) > 0:
+            n_sum = n_sum / np.linalg.norm(n_sum)
+            
+        return n_sum
 
 class group:
     def __init__(self, group_size):
@@ -208,7 +232,8 @@ class group:
         for i in self.group:
             q_i = np.zeros(2)
             for neighbor in i.neighbors:
-                    q0_ij = np.array(neighbor.position[:2]) - np.array(i.position[:2])  # Changed 'agent' to 'i'
+                    q0_ij = (np.array(neighbor.position[:2]) - np.array(i.position[:2]))
+                    q0_ij = q0_ij / np.linalg.norm(q0_ij)  # Normalize to get unit vector
                     q0_ij = q0_ij.astype(float)  # Ensure q0_ij is float
                     
                     # Determine qi,j based on the dot product with previous baseline
@@ -232,11 +257,35 @@ class group:
             # If q_sum is zero, keep the previous baseline
             self.current_baseline = q_prev
             
-        self.update_neighbors()
-    
-        
+        self.update_neighbors()       
         return self.current_baseline
-
+    
+    def update_neighbors(self):
+        # Iterate through all vehicles
+        for i, vehicle in enumerate(self.group):
+            # Calculate distances to all other vehicles
+            distances = []
+            for j, other in enumerate(self.group):
+                if i != j:  # Don't include self
+                    dist = np.linalg.norm(np.array(vehicle.position[:2]) - np.array(other.position[:2]))
+                    distances.append((dist, other))
+            
+            # Sort by distance and take 2 closest
+            distances.sort(key=lambda x: x[0])
+            vehicle.neighbors = set()
+            for k in range(min(2, len(distances))):  # Take up to 2 closest neighbors
+                vehicle.neighbors.add(distances[k][1])
+        # Print neighbor information for each vehicle
+        print("\nNeighbor Information:")
+        for vehicle in self.group:
+            neighbor_ids = [n.id for n in vehicle.neighbors]
+            print(f"Vehicle {vehicle.id} has neighbors: {neighbor_ids}")
+        
+  
+  
+  
+        
+'''
     def update_neighbors(self):
         # Get the current baseline vector
         q = np.array(self.current_baseline)
@@ -265,3 +314,4 @@ class group:
             # Add right neighbor if not rightmost
             if agent_index < len(self.group) - 1:
                 agent.neighbors.add(self.group[sorted_agents[agent_index + 1][0]])
+'''
