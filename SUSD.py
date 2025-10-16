@@ -5,14 +5,15 @@ import Pollution as pl
 from matplotlib.animation import FuncAnimation
 
 pollution = pl.pollution(60, 60, 1.59, 30)
-r = rb.robot(800, 800)
-gp = r.build_group(10)
+r = rb.robot(16000, 16000)
+num_neighbors = 2  # Set the number of neighbors for each robot
+gp = r.build_group(20, num_neighbors)
 
 gp.update_neighbors()
-for i in gp.group:
-    print(f"Vehicle {i.id} has neighbors: {[n.id for n in i.neighbors]}")
+# for i in gp.group:
+#     print(f"Vehicle {i.id} has neighbors: {[n.id for n in i.neighbors]}")
 
-size =1000
+size =20000
 resolution = 100
 
 x = np.linspace(-1, size, resolution)
@@ -36,7 +37,7 @@ cbar = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
 cbar.set_label('Concentration')
 
 def update(frame):
-    t = frame * 0.1  # Time step
+    t = frame * 0.5  # Time step
     
 
     
@@ -44,34 +45,34 @@ def update(frame):
     new_velocities = []
     for auv in gp.group:
         vper = auv.velPerpendicularSUSD(gp, pollution)
-
         vpar = auv.velParallelSUSD(gp)
-        auv.speed = vper + vpar
+        vrep = auv.velRepulsive(gp)
+        auv.speed = vper + vrep
         new_velocities.append(auv.speed)
 
     # Print distance to neighbors for each vehicle
-    print(f"\nFrame {frame}: Distance to neighbors")
+    # print(f"\nFrame {frame}: Distance to neighbors")
     for auv in gp.group:
-        print(f"Vehicle {auv.id}:")
+        # print(f"Vehicle {auv.id}:")
         for neighbor in auv.neighbors:
             distance = np.linalg.norm(np.array(auv.position[:2]) - np.array(neighbor.position[:2]))
-            print(f"  - Distance to Vehicle {neighbor.id}: {distance:.2f}")
-        print (f"Position: {auv.position}")
-    print()  # Add a blank line for readability
+        #     print(f"  - Distance to Vehicle {neighbor.id}: {distance:.2f}")
+        # print (f"Position: {auv.position}")
+    # print()  # Add a blank line for readability
 
     # Update velocities and positions simultaneously
     for i, auv in enumerate(gp.group):
         auv.speed = new_velocities[i]
-        new_position = auv.position + auv.speed * 0.1
+        new_position = auv.position + auv.speed * 0.5
         auv.position = new_position
 
 
     
-    current_time = frame * 0.1 # Current time
+    current_time = frame * 0.5 # Current time
     ax.clear()
     
     # Plot concentration contours
-    contour = ax.contour(X, Y, C, levels=20, cmap=cmap, norm=norm)
+    contour = ax.contourf(X, Y, C, levels=100, cmap=cmap, norm=norm)
     
     # Plot current positions of vehicles
     for i, auv in enumerate(gp.group):
@@ -84,9 +85,9 @@ def update(frame):
     return ax
 
 # Create the animation
-anim = FuncAnimation(fig, update, frames=550, interval=10, blit=False)
+anim = FuncAnimation(fig, update, frames=2000, interval=10, blit=False)
 
-# Save the animation as a GIF
+# # # Save the animation as a GIF
 anim.save('susd_animation.gif', writer='pillow', fps=25)
 
 # Show the animation

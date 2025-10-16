@@ -14,9 +14,9 @@ class robot:
         self.path = []
         self.neighbors = []
 
-    def build_group(self, group_size):
-        gp=group(group_size)
-        distance = 30  # Fixed distance between neighbors
+    def build_group(self, group_size, num_neighbors=3):
+        gp=group(group_size, num_neighbors)
+        distance = 200  # Fixed distance between neighbors
         
         
         for i in range(group_size):
@@ -38,8 +38,8 @@ class robot:
                          for j, agent_j in enumerate(U) if i != j]
             distances.sort(key=lambda x: x[1])
             
-            # Connect to 2-3 nearest neighbors within sensing range
-            for j, dist in distances[:3]:
+            # Connect to 3 nearest neighbors within sensing range
+            for j, dist in distances[:num_neighbors]:
                 if dist <= sensing_range:
                     E.add((i, j))
                     E.add((j, i))  # Undirected graph, so add both directions
@@ -73,20 +73,22 @@ class robot:
                 dfs(unvisited_node, visited)
 
 
-        if group_size > 2:        
-        # Ensure each agent has 2-3 neighbors
+        if group_size > num_neighbors:        
+        # Ensure each agent has 3 neighbors
             for agent in U:
-                if len(agent.neighbors) < 2:
+                if len(agent.neighbors) < num_neighbors:
                     # Add nearest non-neighbor as a neighbor
                     non_neighbors = [a for a in U if a not in agent.neighbors and a != agent]
-                    nearest_non_neighbor = min(non_neighbors, key=lambda x: np.linalg.norm(np.array(agent.position) - np.array(x.position)))
-                    agent.neighbors.append(nearest_non_neighbor)
-                    nearest_non_neighbor.neighbors.append(agent)
-                elif len(agent.neighbors) > 3:
+                    if non_neighbors:
+                        nearest_non_neighbor = min(non_neighbors, key=lambda x: np.linalg.norm(np.array(agent.position) - np.array(x.position)))
+                        agent.neighbors.append(nearest_non_neighbor)
+                        nearest_non_neighbor.neighbors.append(agent)
+                elif len(agent.neighbors) > num_neighbors:
                     # Remove furthest neighbor
-                    furthest_neighbor = max(agent.neighbors, key=lambda x: np.linalg.norm(np.array(agent.position) - np.array(x.position)))
-                    agent.neighbors.remove(furthest_neighbor)
-                    furthest_neighbor.neighbors.remove(agent)
+                    while len(agent.neighbors) > num_neighbors:
+                        furthest_neighbor = max(agent.neighbors, key=lambda x: np.linalg.norm(np.array(agent.position) - np.array(x.position)))
+                        agent.neighbors.remove(furthest_neighbor)
+                        furthest_neighbor.neighbors.remove(agent)
 
         # Remove duplicates from neighbor lists
         for vehicle in gp.group:
@@ -194,6 +196,23 @@ class robot:
 
         return v_perp_n
     
+    def velRepulsive(self, group, safe_distance=40.0, eta=100.0):
+        """
+        Calculate the repulsive velocity component using APF to avoid collisions.
+        """
+        v_rep = np.zeros(2)
+        for other_robot in group.group:
+            if self.id != other_robot.id:
+                dist_vec = self.position[:2] - other_robot.position[:2]
+                dist = np.linalg.norm(dist_vec)
+                
+                if dist < safe_distance:
+                    # Calculate repulsive force (acting as velocity)
+                    repulsive_force = eta * (1.0/dist - 1.0/safe_distance) * (1.0/(dist**2)) * (dist_vec / dist)
+                    v_rep += repulsive_force
+
+        return v_rep
+
     def calculate_perpendicular_vector(self, pollution):
         n_sum = np.zeros(2)
         for neighbor in self.neighbors:
@@ -219,11 +238,12 @@ class robot:
         return n_sum
 
 class group:
-    def __init__(self, group_size):
+    def __init__(self, group_size, num_neighbors=3):
         self.group_size = group_size
         self.group = []
         self.velocity = []
         self.current_baseline = [-1,0]
+        self.num_neighbors = num_neighbors
 
     def calculate_baseline(self):
         # Calculate the common virtual baseline for the group
@@ -273,7 +293,7 @@ class group:
             # Sort by distance and take 2 closest
             distances.sort(key=lambda x: x[0])
             vehicle.neighbors = set()
-            for k in range(min(2, len(distances))):  # Take up to 2 closest neighbors
+            for k in range(min(self.num_neighbors, len(distances))):  # Take up to 2 closest neighbors
                 vehicle.neighbors.add(distances[k][1])
         # Print neighbor information for each vehicle
         print("\nNeighbor Information:")

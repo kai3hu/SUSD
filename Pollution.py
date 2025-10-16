@@ -119,7 +119,7 @@ class pollution:
         
         return concentration
 
-    def display2D(self, size=1000, resolution=100):
+    def display2D(self, size=20000, resolution=100):
         """
         2D representation of pollution concentration with continuous color gradient at z = 0.
     
